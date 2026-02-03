@@ -94,22 +94,31 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Room already paid" });
       }
 
-      const pricesResult = await db.execute(sql`
-        SELECT pr.id as price_id, p.metadata
-        FROM stripe.products p
-        JOIN stripe.prices pr ON pr.product = p.id
-        WHERE p.active = true AND pr.active = true
-          AND p.metadata->>'planType' = ${room.planType}
-        LIMIT 1
-      `);
+      const stripe = await getUncachableStripeClient();
+      
+      // Query Stripe API directly for products with matching planType
+      const products = await stripe.products.search({
+        query: `metadata['planType']:'${room.planType}' AND active:'true'`,
+      });
 
-      if (pricesResult.rows.length === 0) {
+      if (products.data.length === 0) {
+        return res.status(404).json({ error: "Product not found for plan" });
+      }
+
+      const productId = products.data[0].id;
+      
+      // Get active price for this product
+      const prices = await stripe.prices.list({
+        product: productId,
+        active: true,
+        limit: 1,
+      });
+
+      if (prices.data.length === 0) {
         return res.status(404).json({ error: "Price not found for plan" });
       }
 
-      const priceId = pricesResult.rows[0].price_id as string;
-
-      const stripe = await getUncachableStripeClient();
+      const priceId = prices.data[0].id;
       
       const baseUrl = `${req.protocol}://${req.get("host")}`;
       
