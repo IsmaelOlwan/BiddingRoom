@@ -61,11 +61,11 @@ export default function CreateRoomPage() {
     console.log(values);
     toast({
       title: "Room Created",
-      description: "Redirecting to payment...",
+      description: "Redirecting to your room...",
     });
-    // Simulate redirection to payment
+    // Skip payment mock and go straight to success
     setTimeout(() => {
-      setLocation("/payment"); 
+      setLocation("/room/ready/12345"); 
     }, 1000);
   }
 
