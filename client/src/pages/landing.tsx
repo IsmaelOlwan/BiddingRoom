@@ -318,40 +318,40 @@ export default function LandingPage() {
               {
                 name: "Basic",
                 price: "$9",
-                desc: "För snabba, enkla affärer.",
+                desc: "For quick, simple deals.",
                 features: [
-                  "1 privat bidding room",
-                  "Beskrivning + bilder",
+                  "1 private bidding room",
+                  "Description + images",
                   "Deadline",
-                  "Dela länk med valfritt antal köpare",
-                  "Visa inkomna bud",
+                  "Share link with any number of buyers",
+                  "View received bids",
                 ],
-                limits: "1 aktivt rum åt gången",
+                limits: "1 active room at a time",
               },
               {
                 name: "Standard",
                 price: "$19",
-                desc: "För seriösa affärer där struktur behövs.",
+                desc: "For serious deals where structure is needed.",
                 features: [
-                  "Allt i Basic",
-                  "Anonymiserade bud (köpare ser att bud finns, inte vem)",
-                  "Budhistorik",
-                  "Tydligare avslutsvy (“Best offer”)",
+                  "Everything in Basic",
+                  "Anonymized bids (buyers see that bids exist, not who)",
+                  "Bid history",
+                  "Clearer closing view (“Best offer”)",
                 ],
-                limits: "2 aktiva rum samtidigt",
+                limits: "2 active rooms simultaneously",
                 recommended: true,
               },
               {
                 name: "Pro",
                 price: "$29",
-                desc: "För högre värde eller mer press i affären.",
+                desc: "For higher value or more pressure in the deal.",
                 features: [
-                  "Allt i Standard",
-                  "Prioriterad visning av bästa bud",
-                  "Förläng/ändra deadline en gång",
+                  "Everything in Standard",
+                  "Priority display of best bid",
+                  "Extend/change deadline once",
                   "Export (PDF / summary view)",
                 ],
-                limits: "5 aktiva rum samtidigt",
+                limits: "5 active rooms simultaneously",
               },
             ].map((plan, i) => (
               <Card
@@ -360,7 +360,7 @@ export default function LandingPage() {
               >
                 {plan.recommended && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-[0.2em] shadow-lg">
-                    Rekommenderas
+                    Recommended
                   </div>
                 )}
                 <CardHeader className="text-left pb-4">
@@ -372,7 +372,7 @@ export default function LandingPage() {
                       {plan.price}
                     </span>
                     <span className="text-muted-foreground text-sm font-medium">
-                      / rum
+                      / room
                     </span>
                   </div>
                   <p className="mt-4 text-sm text-muted-foreground leading-relaxed min-h-[40px]">
@@ -383,7 +383,7 @@ export default function LandingPage() {
                   <div className="space-y-6 flex-1">
                     <div>
                       <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-3">
-                        Inkluderar
+                        Includes
                       </div>
                       <ul className="space-y-3">
                         {plan.features.map((feature) => (
@@ -400,7 +400,7 @@ export default function LandingPage() {
                     {plan.limits && (
                       <div className="pt-4 border-t border-border/50">
                         <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-2">
-                          Begränsningar
+                          Limitations
                         </div>
                         <p className="text-xs text-muted-foreground">
                           {plan.limits}
@@ -412,7 +412,7 @@ export default function LandingPage() {
                     variant={plan.recommended ? "default" : "outline"}
                     className="w-full mt-8 h-12 font-bold transition-all active:scale-[0.98]"
                   >
-                    Välj {plan.name}
+                    Choose {plan.name}
                   </Button>
                 </CardContent>
               </Card>
