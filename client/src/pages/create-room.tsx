@@ -65,10 +65,8 @@ export default function CreateRoomPage() {
     });
     // Simulate redirection to payment
     setTimeout(() => {
-      // For now, we'll just show a success state or go back home
-      // In a real flow, this would go to Stripe/Checkout
-      setLocation("/"); 
-    }, 1500);
+      setLocation("/payment"); 
+    }, 1000);
   }
 
   return (
