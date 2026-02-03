@@ -37,7 +37,7 @@ export default function LandingPage() {
             Bidding Room
           </div>
           <Button size="sm" className="hidden md:flex">
-            Create a bidding room
+            Create your bidding room
           </Button>
         </div>
       </nav>
@@ -75,7 +75,7 @@ export default function LandingPage() {
                 className="flex flex-col sm:flex-row gap-4 items-start"
               >
                 <Button size="lg" className="text-lg px-8 h-14">
-                  Create a bidding room <ArrowRight className="ml-2 w-5 h-5" />
+                  Create your bidding room <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </motion.div>
 
@@ -326,7 +326,7 @@ export default function LandingPage() {
                   "Share link with any number of buyers",
                   "View received bids",
                 ],
-                limits: "1 active room at a time",
+                limits: "1 active room",
               },
               {
                 name: "Standard",
@@ -347,7 +347,7 @@ export default function LandingPage() {
                 desc: "For higher value or more pressure in the deal.",
                 features: [
                   "Everything in Standard",
-                  "Priority display of best bid",
+                  "Decision-ready overview",
                   "Extend/change deadline once",
                   "Export (PDF / summary view)",
                 ],
@@ -400,7 +400,7 @@ export default function LandingPage() {
                     {plan.limits && (
                       <div className="pt-4 border-t border-border/50">
                         <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-2">
-                          Limitations
+                          Capacity
                         </div>
                         <p className="text-xs text-muted-foreground">
                           {plan.limits}
@@ -473,7 +473,7 @@ export default function LandingPage() {
             variant="secondary"
             className="text-lg px-10 h-16 font-bold"
           >
-            Create a bidding room
+            Create your bidding room
           </Button>
         </div>
       </section>
