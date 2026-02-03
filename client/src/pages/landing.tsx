@@ -37,13 +37,9 @@ export default function LandingPage() {
           <div className="text-xl font-display font-bold tracking-tighter">
             Bidding Room
           </div>
-import { Link } from "wouter";
-
-// ... inside the component ...
-
-<Link href="/create">
-  <Button size="sm" className="hidden md:flex">Create your bidding room</Button>
-</Link>
+          <Link href="/create">
+            <Button size="sm" className="hidden md:flex">Create your bidding room</Button>
+          </Link>
         </div>
       </nav>
 
