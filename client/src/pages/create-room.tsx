@@ -8,6 +8,7 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { Label } from "@/components/ui/label";
 import {
   Form,
   FormControl,
@@ -135,7 +136,7 @@ export default function CreateRoomPage() {
                 />
 
                 <div className="space-y-2">
-                  <FormLabel>Images (Max 5-8)</FormLabel>
+                  <Label>Images (Max 5-8)</Label>
                   <div className="border-2 border-dashed border-border rounded-lg p-12 text-center hover:bg-secondary/50 transition-colors cursor-pointer">
                     <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                     <p className="text-sm text-muted-foreground font-medium">
