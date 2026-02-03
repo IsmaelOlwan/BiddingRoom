@@ -75,9 +75,11 @@ export default function LandingPage() {
                 variants={fadeIn}
                 className="flex flex-col sm:flex-row gap-4 items-start"
               >
-                <Button size="lg" className="text-lg px-8 h-14">
-                  Create your bidding room <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
+                <Link href="/create?plan=standard">
+                  <Button size="lg" className="text-lg px-8 h-14" data-testid="button-hero-cta">
+                    Create your bidding room <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
               </motion.div>
 
               <motion.p
@@ -318,6 +320,7 @@ export default function LandingPage() {
             {[
               {
                 name: "Basic",
+                planType: "basic" as const,
                 price: "$9",
                 desc: "For quick, simple deals.",
                 features: [
@@ -331,6 +334,7 @@ export default function LandingPage() {
               },
               {
                 name: "Standard",
+                planType: "standard" as const,
                 price: "$19",
                 desc: "For serious deals where structure is needed.",
                 features: [
@@ -344,6 +348,7 @@ export default function LandingPage() {
               },
               {
                 name: "Pro",
+                planType: "pro" as const,
                 price: "$29",
                 desc: "For higher value or more pressure in the deal.",
                 features: [
@@ -409,12 +414,15 @@ export default function LandingPage() {
                       </div>
                     )}
                   </div>
-                  <Button
-                    variant={plan.recommended ? "default" : "outline"}
-                    className="w-full mt-8 h-12 font-bold transition-all active:scale-[0.98]"
-                  >
-                    Choose {plan.name}
-                  </Button>
+                  <Link href={`/create?plan=${plan.planType}`}>
+                    <Button
+                      variant={plan.recommended ? "default" : "outline"}
+                      className="w-full mt-8 h-12 font-bold transition-all active:scale-[0.98]"
+                      data-testid={`button-choose-${plan.planType}`}
+                    >
+                      Choose {plan.name}
+                    </Button>
+                  </Link>
                 </CardContent>
               </Card>
             ))}
@@ -469,13 +477,16 @@ export default function LandingPage() {
           <p className="text-xl opacity-80 mb-10 max-w-xl mx-auto">
             Create your first bidding room in minutes.
           </p>
-          <Button
-            size="lg"
-            variant="secondary"
-            className="text-lg px-10 h-16 font-bold"
-          >
-            Create your bidding room
-          </Button>
+          <Link href="/create?plan=standard">
+            <Button
+              size="lg"
+              variant="secondary"
+              className="text-lg px-10 h-16 font-bold"
+              data-testid="button-footer-cta"
+            >
+              Create your bidding room
+            </Button>
+          </Link>
         </div>
       </section>
 

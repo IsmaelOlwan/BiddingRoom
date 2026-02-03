@@ -148,21 +148,42 @@ export async function registerRoutes(
       }
 
       if (room.isPaid) {
-        return res.json({ paid: true, room });
+        return res.json({ 
+          paid: true, 
+          room: {
+            id: room.id,
+            title: room.title,
+            planType: room.planType,
+          }
+        });
       }
 
       if (session_id && typeof session_id === "string") {
+        if (room.stripeSessionId !== session_id) {
+          return res.status(400).json({ error: "Invalid session for this room" });
+        }
+        
         const stripe = await getUncachableStripeClient();
         const session = await stripe.checkout.sessions.retrieve(session_id);
         
+        if (session.metadata?.roomId !== roomId) {
+          return res.status(400).json({ error: "Session does not match room" });
+        }
+        
         if (session.payment_status === "paid") {
           await storage.markRoomPaid(roomId);
-          const updatedRoom = await storage.getRoom(roomId);
-          return res.json({ paid: true, room: updatedRoom });
+          return res.json({ 
+            paid: true, 
+            room: {
+              id: room.id,
+              title: room.title,
+              planType: room.planType,
+            }
+          });
         }
       }
 
-      res.json({ paid: false, room });
+      res.json({ paid: false });
     } catch (error: any) {
       console.error("Verify payment error:", error);
       res.status(500).json({ error: error.message });

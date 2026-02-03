@@ -1,17 +1,10 @@
 import { useState, useEffect } from "react";
-import { useLocation, useParams } from "wouter";
-import { format, differenceInSeconds, addHours } from "date-fns";
-import { Clock, ShieldCheck, Mail, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useParams } from "wouter";
+import { format, differenceInSeconds } from "date-fns";
+import { Clock, ShieldCheck, Mail, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
 import {
   Dialog,
   DialogContent,
@@ -21,62 +14,118 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Badge } from "@/components/ui/badge";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
-// Mock Data
-const MOCK_ASSET = {
-  id: "12345",
-  title: "2018 Industrial CNC Machine - Haas VF-2SS",
-  description: "Excellent condition Haas VF-2SS vertical machining center. Low hours (3,200 spindle hours). Includes chip auger, programmable coolant nozzle, and 12,000 RPM spindle. Maintained annually by certified technicians. Available for immediate pickup in Stockholm.",
-  images: [
-    "/images/hero-bg.png", // Reusing existing assets for now
-    "/images/hero-bg.png",
-    "/images/hero-bg.png"
-  ],
-  seller: "TechManufacturing AB",
-  deadline: addHours(new Date(), 24), // Ends in 24 hours
-  bids: [
-    { id: 1, amount: 12500, time: addHours(new Date(), -2) },
-    { id: 2, amount: 13200, time: addHours(new Date(), -1) },
-    { id: 3, amount: 14000, time: addHours(new Date(), -0.5) },
-  ]
-};
+interface Bid {
+  id: string;
+  amount: number;
+  createdAt: string;
+  bidderLabel?: string;
+}
+
+interface RoomData {
+  room: {
+    id: string;
+    title: string;
+    description: string;
+    images: string[];
+    deadline: string;
+    planType: string;
+  };
+  bids: Bid[];
+  highestBid: number;
+  totalBids: number;
+}
 
 export default function BiddingRoomPage() {
   const { id } = useParams();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [bidAmount, setBidAmount] = useState("");
   const [email, setEmail] = useState("");
-  const [bids, setBids] = useState(MOCK_ASSET.bids);
   const [timeLeft, setTimeLeft] = useState<string>("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEnded, setIsEnded] = useState(false);
 
-  // Countdown timer logic
+  const { data, isLoading, error } = useQuery<RoomData>({
+    queryKey: ["room", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/rooms/${id}`);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to load room");
+      }
+      return res.json();
+    },
+    refetchInterval: 10000,
+  });
+
   useEffect(() => {
+    if (!data?.room?.deadline) return;
+    
     const timer = setInterval(() => {
       const now = new Date();
-      const diff = differenceInSeconds(MOCK_ASSET.deadline, now);
+      const deadline = new Date(data.room.deadline);
+      const diff = differenceInSeconds(deadline, now);
       
       if (diff <= 0) {
         setTimeLeft("Ended");
+        setIsEnded(true);
         clearInterval(timer);
       } else {
-        const hours = Math.floor(diff / 3600);
+        const days = Math.floor(diff / 86400);
+        const hours = Math.floor((diff % 86400) / 3600);
         const minutes = Math.floor((diff % 3600) / 60);
         const seconds = diff % 60;
-        setTimeLeft(`${hours}h ${minutes}m ${seconds}s`);
+        
+        if (days > 0) {
+          setTimeLeft(`${days}d ${hours}h ${minutes}m`);
+        } else {
+          setTimeLeft(`${hours}h ${minutes}m ${seconds}s`);
+        }
       }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [data?.room?.deadline]);
+
+  const placeBidMutation = useMutation({
+    mutationFn: async () => {
+      const amount = parseInt(bidAmount);
+      const res = await apiRequest("POST", `/api/rooms/${id}/bids`, {
+        amount,
+        bidderEmail: email,
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to place bid");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["room", id] });
+      setBidAmount("");
+      setIsDialogOpen(false);
+      toast({
+        title: "Bid Placed Successfully",
+        description: `You have bid $${parseInt(bidAmount).toLocaleString()}`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Bid Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const handlePlaceBid = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Simple validation
     const amount = parseInt(bidAmount);
-    if (!amount || amount <= bids[bids.length - 1].amount) {
+    if (!amount || (data && amount <= data.highestBid)) {
       toast({
         title: "Invalid Bid",
         description: "Your bid must be higher than the current highest bid.",
@@ -85,33 +134,45 @@ export default function BiddingRoomPage() {
       return;
     }
 
-    // Add mock bid
-    const newBid = {
-      id: bids.length + 1,
-      amount: amount,
-      time: new Date()
-    };
-    
-    setBids([newBid, ...bids].sort((a, b) => a.amount - b.amount)); // Keep sorted
-    setBidAmount("");
-    setIsDialogOpen(false);
-    
-    toast({
-      title: "Bid Placed Successfully",
-      description: `You have bid $${amount.toLocaleString()}`,
-    });
+    placeBidMutation.mutate();
   };
 
-  const currentHighest = bids.length > 0 ? bids[bids.length - 1].amount : 0;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 text-center font-sans">
+        <div className="h-20 w-20 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mx-auto mb-6">
+          <AlertCircle className="h-10 w-10" />
+        </div>
+        <h1 className="text-2xl font-display font-bold mb-2">Room Not Found</h1>
+        <p className="text-muted-foreground">
+          {error?.message || "This bidding room doesn't exist or hasn't been activated yet."}
+        </p>
+      </div>
+    );
+  }
+
+  const { room, bids, highestBid, totalBids } = data;
 
   return (
     <div className="min-h-screen bg-background font-sans">
       <header className="border-b border-border/50 sticky top-0 bg-background/95 backdrop-blur z-10">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="font-display font-bold text-lg">Bidding Room #{id}</div>
-          <div className="flex items-center gap-2 font-mono text-sm font-bold text-destructive bg-destructive/10 px-3 py-1 rounded-full">
+          <div className="font-display font-bold text-lg">Bidding Room</div>
+          <div className={`flex items-center gap-2 font-mono text-sm font-bold px-3 py-1 rounded-full ${
+            isEnded 
+              ? "text-muted-foreground bg-muted" 
+              : "text-destructive bg-destructive/10"
+          }`}>
             <Clock className="h-4 w-4" />
-            {timeLeft}
+            {timeLeft || "Loading..."}
           </div>
         </div>
       </header>
@@ -119,88 +180,97 @@ export default function BiddingRoomPage() {
       <main className="container mx-auto px-4 py-8 max-w-6xl">
         <div className="grid lg:grid-cols-3 gap-8">
           
-          {/* Left Column: Asset Info & Images */}
           <div className="lg:col-span-2 space-y-8">
             <div className="space-y-4">
-              <h1 className="text-3xl md:text-4xl font-display font-bold">{MOCK_ASSET.title}</h1>
+              <h1 className="text-3xl md:text-4xl font-display font-bold" data-testid="text-room-title">
+                {room.title}
+              </h1>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <ShieldCheck className="h-4 w-4 text-green-600" />
-                Verified Seller: <span className="font-medium text-foreground">{MOCK_ASSET.seller}</span>
+                Private Bidding Room
               </div>
             </div>
 
-            <Carousel className="w-full bg-secondary/20 rounded-xl overflow-hidden border border-border">
-              <CarouselContent>
-                {MOCK_ASSET.images.map((img, index) => (
-                  <CarouselItem key={index}>
-                    <div className="aspect-video relative">
-                      <img 
-                        src={img} 
-                        alt={`Asset view ${index + 1}`} 
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-              <CarouselPrevious className="left-4" />
-              <CarouselNext className="right-4" />
-            </Carousel>
+            {room.images && room.images.length > 0 ? (
+              <div className="aspect-video bg-secondary/20 rounded-xl overflow-hidden border border-border">
+                <img 
+                  src={room.images[0]} 
+                  alt={room.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="aspect-video bg-secondary/20 rounded-xl border border-border flex items-center justify-center">
+                <p className="text-muted-foreground">No images available</p>
+              </div>
+            )}
 
             <Card className="border-border/50 shadow-sm">
               <CardHeader>
                 <CardTitle>Description</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                  {MOCK_ASSET.description}
+                <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap" data-testid="text-room-description">
+                  {room.description}
                 </p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Right Column: Bidding Interface */}
           <div className="space-y-6">
             <Card className="border-border shadow-lg sticky top-24">
               <CardHeader className="bg-secondary/20 pb-6 border-b border-border/50">
-                <CardDescription className="text-xs uppercase tracking-widest font-bold">Current Highest Bid</CardDescription>
-                <div className="text-4xl font-display font-bold text-primary mt-1">
-                  ${currentHighest.toLocaleString()}
+                <CardDescription className="text-xs uppercase tracking-widest font-bold">
+                  Current Highest Bid
+                </CardDescription>
+                <div className="text-4xl font-display font-bold text-primary mt-1" data-testid="text-highest-bid">
+                  ${highestBid.toLocaleString()}
                 </div>
                 <div className="text-sm text-muted-foreground mt-2 flex items-center gap-1">
                   <CheckCircle2 className="h-3 w-3 text-green-500" />
-                  {bids.length} bids placed
+                  {totalBids} {totalBids === 1 ? "bid" : "bids"} placed
                 </div>
               </CardHeader>
               
               <CardContent className="pt-6 space-y-6">
-                <div className="space-y-4">
-                  <div className="text-sm font-medium">Recent Activity</div>
-                  <div className="space-y-3">
-                    {[...bids].reverse().slice(0, 5).map((bid) => (
-                      <div key={bid.id} className="flex justify-between items-center text-sm p-2 rounded hover:bg-secondary/30 transition-colors">
-                        <div className="text-muted-foreground font-mono">
-                          Bid #{bid.id}
+                {bids.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="text-sm font-medium">Recent Activity</div>
+                    <div className="space-y-3">
+                      {bids.slice(0, 5).map((bid) => (
+                        <div 
+                          key={bid.id} 
+                          className="flex justify-between items-center text-sm p-2 rounded hover:bg-secondary/30 transition-colors"
+                          data-testid={`bid-item-${bid.id}`}
+                        >
+                          <div className="text-muted-foreground font-mono">
+                            {bid.bidderLabel || "Bid"}
+                          </div>
+                          <div className="font-bold">
+                            ${bid.amount.toLocaleString()}
+                          </div>
                         </div>
-                        <div className="font-bold">
-                          ${bid.amount.toLocaleString()}
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button size="lg" className="w-full text-lg h-12 font-bold shadow-md">
-                      Place Bid
+                    <Button 
+                      size="lg" 
+                      className="w-full text-lg h-12 font-bold shadow-md"
+                      disabled={isEnded}
+                      data-testid="button-place-bid"
+                    >
+                      {isEnded ? "Bidding Ended" : "Place Bid"}
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Place a Bid</DialogTitle>
                       <DialogDescription>
-                        You are bidding on {MOCK_ASSET.title}
+                        You are bidding on {room.title}
                       </DialogDescription>
                     </DialogHeader>
                     
@@ -212,15 +282,16 @@ export default function BiddingRoomPage() {
                           <Input 
                             type="number" 
                             className="pl-7" 
-                            placeholder={`${(currentHighest + 100).toLocaleString()}`}
-                            min={currentHighest + 1}
+                            placeholder={`${(highestBid + 100).toLocaleString()}`}
+                            min={highestBid + 1}
                             value={bidAmount}
                             onChange={(e) => setBidAmount(e.target.value)}
                             required
+                            data-testid="input-bid-amount"
                           />
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Minimum bid: ${(currentHighest + 1).toLocaleString()}
+                          Minimum bid: ${(highestBid + 1).toLocaleString()}
                         </p>
                       </div>
 
@@ -235,6 +306,7 @@ export default function BiddingRoomPage() {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
+                            data-testid="input-bidder-email"
                           />
                         </div>
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -243,8 +315,20 @@ export default function BiddingRoomPage() {
                         </p>
                       </div>
 
-                      <Button type="submit" className="w-full mt-2">
-                        Confirm Bid
+                      <Button 
+                        type="submit" 
+                        className="w-full mt-2"
+                        disabled={placeBidMutation.isPending}
+                        data-testid="button-confirm-bid"
+                      >
+                        {placeBidMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Placing bid...
+                          </>
+                        ) : (
+                          "Confirm Bid"
+                        )}
                       </Button>
                     </form>
                   </DialogContent>

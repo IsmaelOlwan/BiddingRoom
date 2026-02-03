@@ -2,8 +2,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Upload, ArrowLeft } from "lucide-react";
-import { Link, useLocation } from "wouter";
+import { CalendarIcon, Upload, ArrowLeft, Loader2 } from "lucide-react";
+import { Link, useLocation, useSearch } from "wouter";
+import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -27,6 +29,13 @@ import {
 } from "@/components/ui/popover";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+
+const PLANS = {
+  basic: { name: "Basic", price: "$9" },
+  standard: { name: "Standard", price: "$19" },
+  pro: { name: "Pro", price: "$29" },
+};
 
 const formSchema = z.object({
   title: z.string().min(5, {
@@ -46,6 +55,10 @@ const formSchema = z.object({
 export default function CreateRoomPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const searchString = useSearch();
+  const params = new URLSearchParams(searchString);
+  const planType = (params.get("plan") as "basic" | "standard" | "pro") || "basic";
+  const plan = PLANS[planType];
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -56,17 +69,37 @@ export default function CreateRoomPage() {
     },
   });
 
+  const createRoomMutation = useMutation({
+    mutationFn: async (values: z.infer<typeof formSchema>) => {
+      const roomRes = await apiRequest("POST", "/api/rooms", {
+        title: values.title,
+        description: values.description,
+        images: [],
+        deadline: values.deadline.toISOString(),
+        sellerEmail: values.email,
+        planType: planType,
+      });
+      const { room } = await roomRes.json();
+      
+      const checkoutRes = await apiRequest("POST", `/api/rooms/${room.id}/checkout`);
+      const { url } = await checkoutRes.json();
+      
+      return url;
+    },
+    onSuccess: (checkoutUrl) => {
+      window.location.href = checkoutUrl;
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create room. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   function onSubmit(values: z.infer<typeof formSchema>) {
-    // In a real app, this would send data to the backend
-    console.log(values);
-    toast({
-      title: "Room Created",
-      description: "Redirecting to your room...",
-    });
-    // Skip payment mock and go straight to success
-    setTimeout(() => {
-      setLocation("/room/ready/12345"); 
-    }, 1000);
+    createRoomMutation.mutate(values);
   }
 
   return (
@@ -85,6 +118,11 @@ export default function CreateRoomPage() {
           <p className="mt-2 text-muted-foreground">
             Fill in the details below to set up your private sales environment.
           </p>
+          <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full">
+            <span className="text-sm font-medium text-primary">{plan.name} Plan</span>
+            <span className="text-sm text-muted-foreground">•</span>
+            <span className="text-sm font-bold text-primary">{plan.price}</span>
+          </div>
         </div>
 
         <Card className="border-border shadow-sm">
@@ -105,7 +143,11 @@ export default function CreateRoomPage() {
                     <FormItem>
                       <FormLabel>Asset Title</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g. 2018 Industrial CNC Machine" {...field} />
+                        <Input 
+                          placeholder="e.g. 2018 Industrial CNC Machine" 
+                          data-testid="input-title"
+                          {...field} 
+                        />
                       </FormControl>
                       <FormDescription>
                         A clear, descriptive title for your asset.
@@ -125,6 +167,7 @@ export default function CreateRoomPage() {
                         <Textarea
                           placeholder="Describe the condition, specifications, and includes..."
                           className="min-h-[150px]"
+                          data-testid="input-description"
                           {...field}
                         />
                       </FormControl>
@@ -134,11 +177,11 @@ export default function CreateRoomPage() {
                 />
 
                 <div className="space-y-2">
-                  <Label>Images (Max 5-8)</Label>
-                  <div className="border-2 border-dashed border-border rounded-lg p-12 text-center hover:bg-secondary/50 transition-colors cursor-pointer">
+                  <Label>Images (Coming Soon)</Label>
+                  <div className="border-2 border-dashed border-border rounded-lg p-12 text-center bg-muted/20 cursor-not-allowed opacity-60">
                     <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                     <p className="text-sm text-muted-foreground font-medium">
-                      Click to upload or drag and drop
+                      Image upload coming soon
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       PNG, JPG up to 10MB each
@@ -158,6 +201,7 @@ export default function CreateRoomPage() {
                             <FormControl>
                               <Button
                                 variant={"outline"}
+                                data-testid="button-deadline"
                                 className={cn(
                                   "w-full pl-3 text-left font-normal",
                                   !field.value && "text-muted-foreground"
@@ -199,7 +243,11 @@ export default function CreateRoomPage() {
                       <FormItem>
                         <FormLabel>Seller Email</FormLabel>
                         <FormControl>
-                          <Input placeholder="you@company.com" {...field} />
+                          <Input 
+                            placeholder="you@company.com" 
+                            data-testid="input-email"
+                            {...field} 
+                          />
                         </FormControl>
                         <FormDescription>
                           Where you'll receive bid notifications.
@@ -211,8 +259,21 @@ export default function CreateRoomPage() {
                 </div>
 
                 <div className="pt-6 border-t border-border">
-                  <Button type="submit" size="lg" className="w-full md:w-auto font-bold px-8">
-                    Continue to Payment
+                  <Button 
+                    type="submit" 
+                    size="lg" 
+                    className="w-full md:w-auto font-bold px-8"
+                    disabled={createRoomMutation.isPending}
+                    data-testid="button-submit"
+                  >
+                    {createRoomMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating room...
+                      </>
+                    ) : (
+                      `Continue to Payment (${plan.price})`
+                    )}
                   </Button>
                 </div>
               </form>
