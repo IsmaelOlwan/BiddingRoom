@@ -5,6 +5,7 @@ import { createServer } from "http";
 import { runMigrations } from 'stripe-replit-sync';
 import { getStripeSync } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
+import { storage } from "./storage";
 
 const app = express();
 const httpServer = createServer(app);
@@ -31,6 +32,20 @@ async function initStripe() {
 
 // Initialize Stripe
 initStripe();
+
+// Cleanup unpaid rooms older than 1 hour on startup and every 15 minutes
+async function cleanupUnpaidRooms() {
+  try {
+    const deleted = await storage.cleanupUnpaidRooms(60);
+    if (deleted > 0) {
+      log(`Cleaned up ${deleted} unpaid room(s)`);
+    }
+  } catch (error) {
+    console.error('Cleanup error:', error);
+  }
+}
+cleanupUnpaidRooms();
+setInterval(cleanupUnpaidRooms, 15 * 60 * 1000);
 
 declare module "http" {
   interface IncomingMessage {

@@ -6,7 +6,7 @@ import {
   type InsertBid, 
   type Bid 
 } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, lt } from "drizzle-orm";
 import { db } from "./db";
 
 export interface IStorage {
@@ -21,6 +21,7 @@ export interface IStorage {
   createBid(bid: InsertBid): Promise<Bid>;
   getBidsForRoom(roomId: string): Promise<Bid[]>;
   getHighestBid(roomId: string): Promise<Bid | undefined>;
+  cleanupUnpaidRooms(maxAgeMinutes: number): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -79,6 +80,20 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(bids.amount))
       .limit(1);
     return highestBid;
+  }
+
+  async cleanupUnpaidRooms(maxAgeMinutes: number = 60): Promise<number> {
+    const cutoffTime = new Date(Date.now() - maxAgeMinutes * 60 * 1000);
+    const deleted = await db
+      .delete(biddingRooms)
+      .where(
+        and(
+          eq(biddingRooms.isPaid, false),
+          lt(biddingRooms.createdAt, cutoffTime)
+        )
+      )
+      .returning();
+    return deleted.length;
   }
 }
 
