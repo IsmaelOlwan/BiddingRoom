@@ -105,8 +105,8 @@ export default function RoomReadyPage() {
           <div className="space-y-2">
             <label className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">Public Bidding Link (Share with buyers)</label>
             <div className="flex gap-2">
-              <Input value={roomUrl} readOnly className="font-mono bg-muted/50 text-xs" />
-              <Button onClick={copyPublic} variant="outline" size="icon" className="shrink-0">
+              <Input value={roomUrl} readOnly className="font-mono bg-muted/50 text-xs" data-testid="input-public-url" />
+              <Button onClick={copyPublic} variant="outline" size="icon" className="shrink-0" data-testid="button-copy-public">
                 {copiedPublic ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
@@ -115,8 +115,8 @@ export default function RoomReadyPage() {
           <div className="space-y-2">
             <label className="text-[10px] uppercase tracking-wider font-bold text-destructive">Private Owner Link (Keep this secret!)</label>
             <div className="flex gap-2">
-              <Input value={ownerUrl} readOnly className="font-mono bg-destructive/5 border-destructive/20 text-xs" />
-              <Button onClick={copyOwner} variant="outline" size="icon" className="shrink-0 hover:bg-destructive/10">
+              <Input value={ownerUrl} readOnly className="font-mono bg-destructive/5 border-destructive/20 text-xs" data-testid="input-owner-url" />
+              <Button onClick={copyOwner} variant="outline" size="icon" className="shrink-0 hover:bg-destructive/10" data-testid="button-copy-owner">
                 {copiedOwner ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
@@ -125,12 +125,12 @@ export default function RoomReadyPage() {
 
           <div className="pt-2 flex gap-3">
              <Link href={`/room/${id}`} className="flex-1">
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full" data-testid="button-view-public">
                 View Public Room <ExternalLink className="ml-2 h-4 w-4" />
               </Button>
             </Link>
              <Link href={`/room/owner/${data.room.ownerToken}`} className="flex-1">
-              <Button className="w-full font-bold">
+              <Button className="w-full font-bold" data-testid="button-manage-room">
                 Manage Room <ShieldCheck className="ml-2 h-4 w-4" />
               </Button>
             </Link>

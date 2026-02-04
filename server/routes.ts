@@ -170,6 +170,7 @@ export async function registerRoutes(
             id: room.id,
             title: room.title,
             planType: room.planType,
+            ownerToken: room.ownerToken,
           }
         });
       }
@@ -320,6 +321,20 @@ export async function registerRoutes(
       const room = await storage.getRoom(roomId);
       if (!room || room.ownerToken !== token) {
         return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      if (!room.isPaid) {
+        return res.status(400).json({ error: "Room not activated" });
+      }
+
+      if (room.winningBidId) {
+        return res.status(400).json({ error: "Auction already closed" });
+      }
+
+      const bids = await storage.getBidsForRoom(roomId);
+      const bid = bids.find(b => b.id === bidId);
+      if (!bid) {
+        return res.status(400).json({ error: "Invalid bid for this room" });
       }
 
       const updatedRoom = await storage.closeAuction(roomId, bidId);

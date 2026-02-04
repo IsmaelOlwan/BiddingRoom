@@ -222,6 +222,7 @@ export default function OwnerViewPage() {
                               onClick={() => setIsClosing(bid.id)}
                               disabled={isClosing === bid.id}
                               className="md:w-auto w-full font-bold"
+                              data-testid={`button-accept-bid-${bid.id}`}
                             >
                               {isClosing === bid.id ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -307,10 +308,10 @@ export default function OwnerViewPage() {
               </CardDescription>
             </CardHeader>
             <CardFooter className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setIsClosing(null)} disabled={closeAuctionMutation.isPending}>
+              <Button variant="outline" onClick={() => setIsClosing(null)} disabled={closeAuctionMutation.isPending} data-testid="button-cancel-close">
                 Cancel
               </Button>
-              <Button onClick={() => closeAuctionMutation.mutate(isClosing!)} disabled={closeAuctionMutation.isPending}>
+              <Button onClick={() => closeAuctionMutation.mutate(isClosing!)} disabled={closeAuctionMutation.isPending} data-testid="button-confirm-close">
                 {closeAuctionMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm Acceptance"}
               </Button>
             </CardFooter>
