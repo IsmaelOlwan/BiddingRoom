@@ -26,21 +26,24 @@ export async function registerRoutes(
 
   app.get("/api/prices", async (req, res) => {
     try {
-      const result = await db.execute(sql`
-        SELECT 
-          p.id as product_id,
-          p.name as product_name,
-          p.description as product_description,
-          p.metadata as product_metadata,
-          pr.id as price_id,
-          pr.unit_amount,
-          pr.currency
-        FROM stripe.products p
-        JOIN stripe.prices pr ON pr.product = p.id
-        WHERE p.active = true AND pr.active = true
-        ORDER BY pr.unit_amount
-      `);
-      res.json({ prices: result.rows });
+      const stripe = await getUncachableStripeClient();
+      const products = await stripe.products.list({ active: true });
+      const prices = await stripe.prices.list({ active: true });
+
+      const results = products.data.map(product => {
+        const productPrice = prices.data.find(price => price.product === product.id);
+        return {
+          product_id: product.id,
+          product_name: product.name,
+          product_description: product.description,
+          product_metadata: product.metadata,
+          price_id: productPrice?.id,
+          unit_amount: productPrice?.unit_amount,
+          currency: productPrice?.currency
+        };
+      });
+
+      res.json({ prices: results });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -85,15 +88,17 @@ export async function registerRoutes(
 
       const stripe = await getUncachableStripeClient();
       
-      const products = await stripe.products.search({
-        query: `metadata['planType']:'${room.planType}' AND active:'true'`,
+      const products = await stripe.products.list({
+        active: true,
       });
 
-      if (products.data.length === 0) {
-        return res.status(404).json({ error: "Product not found for plan" });
+      const product = products.data.find(p => p.metadata.planType === room.planType);
+
+      if (!product) {
+        return res.status(404).json({ error: `Product not found for plan: ${room.planType}` });
       }
 
-      const productId = products.data[0].id;
+      const productId = product.id;
       
       const prices = await stripe.prices.list({
         product: productId,
