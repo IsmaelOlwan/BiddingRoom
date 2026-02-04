@@ -17,6 +17,7 @@ export interface IStorage {
   updateRoom(id: string, data: Partial<BiddingRoom>): Promise<BiddingRoom | undefined>;
   markRoomPaid(id: string): Promise<BiddingRoom | undefined>;
   closeAuction(roomId: string, winningBidId: string): Promise<BiddingRoom | undefined>;
+  getBid(id: string): Promise<Bid | undefined>;
   
   createBid(bid: InsertBid): Promise<Bid>;
   getBidsForRoom(roomId: string): Promise<Bid[]>;
@@ -61,6 +62,11 @@ export class DatabaseStorage implements IStorage {
       .where(eq(biddingRooms.id, roomId))
       .returning();
     return updatedRoom;
+  }
+
+  async getBid(id: string): Promise<Bid | undefined> {
+    const [bid] = await db.select().from(bids).where(eq(bids.id, id));
+    return bid;
   }
 
   async createBid(bid: InsertBid): Promise<Bid> {

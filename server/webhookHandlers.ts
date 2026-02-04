@@ -1,5 +1,6 @@
 import { getStripeSync } from './stripeClient';
 import { storage } from './storage';
+import { sendEmail, emailTemplates } from './email';
 
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string): Promise<void> {
@@ -28,6 +29,15 @@ export class WebhookHandlers {
           if (room && room.stripeSessionId === session.id && !room.isPaid) {
             await storage.markRoomPaid(roomId);
             console.log(`[WEBHOOK] Room ${roomId} activated after payment confirmation`);
+
+            // Send room ready email
+            const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+            const ownerLink = `${baseUrl}/room/owner/${room.ownerToken}`;
+            await sendEmail(
+              room.sellerEmail,
+              `Your OfferRoom for ${room.title} is ready!`,
+              emailTemplates.roomReady(room.title, ownerLink)
+            );
           }
         }
       }

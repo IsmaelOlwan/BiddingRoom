@@ -7,6 +7,7 @@ import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
+import { sendEmail, emailTemplates } from "./email";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -261,6 +262,31 @@ export async function registerRoutes(
         amount: data.amount,
         bidderEmail: data.bidderEmail,
       });
+
+      // Send notifications asynchronously
+      (async () => {
+        try {
+          const baseUrl = `${req.protocol}://${req.get("host")}`;
+          const adminLink = `${baseUrl}/room/owner/${room.ownerToken}`;
+          const roomLink = `${baseUrl}/room/${roomId}`;
+
+          // Notify seller
+          await sendEmail(
+            room.sellerEmail,
+            `New bid on ${room.title}: $${bid.amount.toLocaleString()}`,
+            emailTemplates.newBid(room.title, bid.amount, adminLink)
+          );
+
+          // Confirm to bidder
+          await sendEmail(
+            bid.bidderEmail,
+            `Bid confirmed: ${room.title}`,
+            emailTemplates.bidConfirmation(room.title, bid.amount, roomLink)
+          );
+        } catch (err) {
+          console.error("Failed to send bid notification emails:", err);
+        }
+      })();
 
       res.json({ bid: { id: bid.id, amount: bid.amount, createdAt: bid.createdAt } });
     } catch (error: any) {
