@@ -81,5 +81,19 @@ export const emailTemplates = {
     <p>Your bid of <strong>$${amount.toLocaleString()}</strong> for <strong>${roomTitle}</strong> has been successfully placed.</p>
     <p>You can track the auction status here:</p>
     <a href="${roomLink}" style="display:inline-block;padding:12px 24px;background-color:#000;color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">View Bidding Room</a>
+  `,
+  auctionClosedSeller: (roomTitle: string, winnerEmail: string, amount: number) => `
+    <h1>Congratulations! Your auction has closed.</h1>
+    <p>You have accepted an offer of <strong>$${amount.toLocaleString()}</strong> for <strong>${roomTitle}</strong>.</p>
+    <p>The winning bidder's contact information:</p>
+    <p style="font-size:18px;font-weight:bold;background:#f5f5f5;padding:12px;border-radius:6px;">${winnerEmail}</p>
+    <p>Please reach out to coordinate payment and delivery of your asset.</p>
+  `,
+  auctionClosedWinner: (roomTitle: string, sellerEmail: string, amount: number) => `
+    <h1>Congratulations! You won the auction!</h1>
+    <p>Your bid of <strong>$${amount.toLocaleString()}</strong> for <strong>${roomTitle}</strong> has been accepted by the seller.</p>
+    <p>The seller's contact information:</p>
+    <p style="font-size:18px;font-weight:bold;background:#f5f5f5;padding:12px;border-radius:6px;">${sellerEmail}</p>
+    <p>Please expect to be contacted soon to arrange payment and delivery.</p>
   `
 };

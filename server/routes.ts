@@ -169,6 +169,37 @@ export async function registerRoutes(
         });
       }
 
+      // Fallback: Check Stripe directly if webhook hasn't fired yet
+      try {
+        const stripe = await getUncachableStripeClient();
+        const session = await stripe.checkout.sessions.retrieve(session_id);
+        
+        if (session.payment_status === 'paid') {
+          await storage.markRoomPaid(roomId);
+          
+          // Send room ready email
+          const baseUrl = `${req.protocol}://${req.get("host")}`;
+          const ownerLink = `${baseUrl}/room/owner/${room.ownerToken}`;
+          sendEmail(
+            room.sellerEmail,
+            `Your OfferRoom for ${room.title} is ready!`,
+            emailTemplates.roomReady(room.title, ownerLink)
+          ).catch(err => console.error("Email error:", err));
+          
+          return res.json({ 
+            paid: true, 
+            room: {
+              id: room.id,
+              title: room.title,
+              planType: room.planType,
+              ownerToken: room.ownerToken,
+            }
+          });
+        }
+      } catch (stripeError) {
+        console.error("Stripe verification fallback error:", stripeError);
+      }
+
       res.json({ 
         paid: false, 
         pending: true,
@@ -361,6 +392,28 @@ export async function registerRoutes(
       }
 
       const updatedRoom = await storage.closeAuction(roomId, bidId);
+
+      // Send auction closed emails asynchronously
+      (async () => {
+        try {
+          // Notify seller with winner's contact
+          await sendEmail(
+            room.sellerEmail,
+            `Auction closed: ${room.title}`,
+            emailTemplates.auctionClosedSeller(room.title, bid.bidderEmail, bid.amount)
+          );
+
+          // Notify winning bidder with seller's contact
+          await sendEmail(
+            bid.bidderEmail,
+            `You won the auction: ${room.title}`,
+            emailTemplates.auctionClosedWinner(room.title, room.sellerEmail, bid.amount)
+          );
+        } catch (err) {
+          console.error("Failed to send auction closed emails:", err);
+        }
+      })();
+
       res.json({ room: updatedRoom });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

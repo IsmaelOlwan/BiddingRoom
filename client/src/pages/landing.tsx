@@ -497,11 +497,11 @@ export default function LandingPage() {
             OfferRoom
           </div>
           <div className="flex gap-6">
-            <Link href="/privacy">
-              <a className="hover:text-foreground">Privacy</a>
+            <Link href="/privacy" className="hover:text-foreground">
+              Privacy
             </Link>
-            <Link href="/terms">
-              <a className="hover:text-foreground">Terms</a>
+            <Link href="/terms" className="hover:text-foreground">
+              Terms
             </Link>
             <a href="mailto:support@offerroom.com" className="hover:text-foreground">
               Contact
