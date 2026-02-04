@@ -360,9 +360,9 @@ export default function CreateRoomPage() {
                       )}
                     />
                   </div>
-                  <FormDescription className="text-xs">
+                  <p className="text-xs text-muted-foreground">
                     Your timezone: <span className="font-medium">{userTimezone}</span>
-                  </FormDescription>
+                  </p>
                 </div>
 
                 <div className="grid md:grid-cols-1 gap-6">
