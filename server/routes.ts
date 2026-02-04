@@ -257,6 +257,14 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Bidding has ended" });
       }
 
+      // Final safety check: deadline must be at least 1 hour in the future when bidding
+      // to account for clock drift or last-second submissions
+      const now = new Date();
+      const deadlineDate = new Date(room.deadline);
+      if (now >= deadlineDate) {
+        return res.status(400).json({ error: "Bidding has ended (server-side check)" });
+      }
+
       const data = placeBidSchema.parse(req.body);
       
       const highestBid = await storage.getHighestBid(roomId);
