@@ -269,6 +269,14 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Room not found" });
       }
 
+      if (!room.isPaid) {
+        return res.status(403).json({ 
+          error: "Room not activated yet",
+          pending: true,
+          message: "Payment is still processing. Please complete payment or wait for confirmation."
+        });
+      }
+
       const bids = await storage.getBidsForRoom(room.id);
       
       res.json({ 
@@ -280,7 +288,6 @@ export async function registerRoutes(
           deadline: room.deadline,
           sellerEmail: room.sellerEmail,
           planType: room.planType,
-          isPaid: room.isPaid,
           winningBidId: room.winningBidId,
         },
         bids,

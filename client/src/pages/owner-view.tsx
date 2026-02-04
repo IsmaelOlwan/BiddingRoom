@@ -94,6 +94,25 @@ export default function OwnerViewPage() {
   }
 
   if (error || !data) {
+    const isPendingPayment = error instanceof Error && error.message.includes("not activated");
+    
+    if (isPendingPayment) {
+      return (
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 text-center font-sans">
+          <div className="h-20 w-20 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Clock className="h-10 w-10" />
+          </div>
+          <h1 className="text-2xl font-display font-bold mb-2">Payment Pending</h1>
+          <p className="text-muted-foreground max-w-md">
+            Your room is still being activated. Please complete payment or wait a moment for confirmation.
+          </p>
+          <Link href="/">
+            <Button variant="outline" className="mt-8">Return Home</Button>
+          </Link>
+        </div>
+      );
+    }
+    
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 text-center font-sans">
         <div className="h-20 w-20 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mx-auto mb-6">
