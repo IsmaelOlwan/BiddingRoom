@@ -27,6 +27,12 @@ export default function RoomReadyPage() {
       }
       return res.json();
     },
+    // Poll every 2 seconds until payment is confirmed via webhook
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (data?.paid) return false; // Stop polling once paid
+      return 2000; // Poll every 2 seconds
+    },
     retry: 3,
     retryDelay: 1000,
   });
@@ -50,19 +56,33 @@ export default function RoomReadyPage() {
     );
   }
 
-  if (error || !data?.paid) {
+  // Show error state only for actual errors, not pending state
+  if (error) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 text-center font-sans">
         <div className="h-20 w-20 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mx-auto mb-6">
           <AlertCircle className="h-10 w-10" />
         </div>
-        <h1 className="text-2xl font-display font-bold mb-2">Payment Not Verified</h1>
+        <h1 className="text-2xl font-display font-bold mb-2">Payment Error</h1>
         <p className="text-muted-foreground mb-6">
-          {error?.message || "We couldn't verify your payment. Please try again."}
+          {error?.message || "Something went wrong. Please try again."}
         </p>
         <Link href="/create">
           <Button>Try Again</Button>
         </Link>
+      </div>
+    );
+  }
+
+  // Show processing state while waiting for webhook confirmation
+  if (!data?.paid) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 text-center font-sans">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <h1 className="text-2xl font-display font-bold mb-2">Processing Payment...</h1>
+        <p className="text-muted-foreground">
+          Please wait while we confirm your payment. This usually takes a few seconds.
+        </p>
       </div>
     );
   }

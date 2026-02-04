@@ -146,6 +146,8 @@ export async function registerRoutes(
     }
   });
 
+  // Verify payment status - ONLY checks status, does NOT activate rooms
+  // Room activation happens ONLY via Stripe webhook (checkout.session.completed)
   app.get("/api/rooms/:roomId/verify-payment", async (req, res) => {
     try {
       const { roomId } = req.params;
@@ -156,6 +158,7 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Room not found" });
       }
 
+      // If already paid (activated by webhook), return success
       if (room.isPaid) {
         return res.json({ 
           paid: true, 
@@ -167,32 +170,20 @@ export async function registerRoutes(
         });
       }
 
+      // Validate session belongs to this room
       if (session_id && typeof session_id === "string") {
         if (room.stripeSessionId !== session_id) {
           return res.status(400).json({ error: "Invalid session for this room" });
         }
-        
-        const stripe = await getUncachableStripeClient();
-        const session = await stripe.checkout.sessions.retrieve(session_id);
-        
-        if (session.metadata?.roomId !== roomId) {
-          return res.status(400).json({ error: "Session does not match room" });
-        }
-        
-        if (session.payment_status === "paid") {
-          await storage.markRoomPaid(roomId);
-          return res.json({ 
-            paid: true, 
-            room: {
-              id: room.id,
-              title: room.title,
-              planType: room.planType,
-            }
-          });
-        }
       }
 
-      res.json({ paid: false });
+      // Room not yet activated by webhook - return pending status
+      // Client should poll this endpoint until webhook activates the room
+      res.json({ 
+        paid: false, 
+        pending: true,
+        message: "Payment is being processed. Please wait..."
+      });
     } catch (error: any) {
       console.error("Verify payment error:", error);
       res.status(500).json({ error: error.message });
