@@ -143,6 +143,14 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Room not found" });
       }
 
+      if (!session_id || typeof session_id !== "string") {
+        return res.status(400).json({ error: "Session ID required" });
+      }
+
+      if (room.stripeSessionId !== session_id) {
+        return res.status(403).json({ error: "Invalid session for this room" });
+      }
+
       if (room.isPaid) {
         return res.json({ 
           paid: true, 
@@ -153,12 +161,6 @@ export async function registerRoutes(
             ownerToken: room.ownerToken,
           }
         });
-      }
-
-      if (session_id && typeof session_id === "string") {
-        if (room.stripeSessionId !== session_id) {
-          return res.status(400).json({ error: "Invalid session for this room" });
-        }
       }
 
       res.json({ 
