@@ -233,6 +233,10 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Room not activated" });
       }
 
+      if (room.winningBidId) {
+        return res.status(400).json({ error: "Auction has been closed" });
+      }
+
       if (new Date() >= new Date(room.deadline)) {
         return res.status(400).json({ error: "Bidding has ended" });
       }
