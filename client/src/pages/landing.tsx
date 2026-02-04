@@ -35,7 +35,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <div className="text-xl font-display font-bold tracking-tighter">
-            Bidding Room
+            OfferRoom
           </div>
           <Link href="/create">
             <Button size="sm" className="hidden md:flex">Create your bidding room</Button>
@@ -494,7 +494,7 @@ export default function LandingPage() {
       <footer className="py-8 bg-background border-t border-border">
         <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center text-sm text-muted-foreground">
           <div className="font-display font-bold text-foreground mb-4 md:mb-0">
-            Bidding Room
+            OfferRoom
           </div>
           <div className="flex gap-6">
             <a href="#" className="hover:text-foreground">

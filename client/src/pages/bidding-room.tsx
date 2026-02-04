@@ -172,7 +172,7 @@ export default function BiddingRoomPage() {
     <div className="min-h-screen bg-background font-sans">
       <header className="border-b border-border/50 sticky top-0 bg-background/95 backdrop-blur z-10">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="font-display font-bold text-lg">Bidding Room</div>
+          <div className="font-display font-bold text-lg">OfferRoom</div>
           <div className="flex flex-col items-end">
             <div className={`flex items-center gap-2 font-mono text-sm font-bold px-3 py-1 rounded-full ${
               isEnded 

@@ -149,7 +149,7 @@ export default function OwnerViewPage() {
                 <ChevronLeft className="h-5 w-5" />
               </Button>
             </Link>
-            <div className="font-display font-bold text-lg hidden md:block">Seller Admin Panel</div>
+            <div className="font-display font-bold text-lg hidden md:block">OfferRoom Admin Panel</div>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 font-mono text-xs font-bold px-3 py-1 rounded-full bg-primary/10 text-primary">

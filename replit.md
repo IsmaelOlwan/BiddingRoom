@@ -1,8 +1,8 @@
-# Bidding Room
+# OfferRoom
 
 ## Overview
 
-Bidding Room is a private asset sales platform that allows sellers to create time-limited bidding rooms for their assets. Buyers can place bids privately without seeing other bidders' identities, and sellers receive payments through Stripe integration. The platform offers three pricing tiers (Basic, Standard, Pro) with different room limits and features.
+OfferRoom is a private asset sales platform that allows sellers to create time-limited bidding rooms for their assets. Buyers can place bids privately without seeing other bidders' identities, and sellers receive payments through Stripe integration. The platform offers three pricing tiers (Basic, Standard, Pro) with different room limits and features.
 
 ## User Preferences
 
