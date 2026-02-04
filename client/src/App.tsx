@@ -8,6 +8,7 @@ import LandingPage from "./pages/landing";
 import CreateRoomPage from "./pages/create-room";
 import RoomReadyPage from "./pages/room-ready";
 import BiddingRoomPage from "./pages/bidding-room";
+import OwnerViewPage from "./pages/owner-view";
 
 function Router() {
   return (
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/create" component={CreateRoomPage} />
       <Route path="/room/ready/:id" component={RoomReadyPage} />
       <Route path="/room/:id" component={BiddingRoomPage} />
+      <Route path="/room/owner/:token" component={OwnerViewPage} />
       <Route component={NotFound} />
     </Switch>
   );

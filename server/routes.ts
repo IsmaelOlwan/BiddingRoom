@@ -290,31 +290,40 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/rooms/:roomId/seller", async (req, res) => {
+  app.get("/api/rooms/owner/:token", async (req, res) => {
     try {
-      const { roomId } = req.params;
-      const { email } = req.query;
-
-      const room = await storage.getRoom(roomId);
+      const { token } = req.params;
+      const room = await storage.getRoomByOwnerToken(token);
+      
       if (!room) {
         return res.status(404).json({ error: "Room not found" });
       }
 
-      if (email !== room.sellerEmail) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
-
-      const bids = await storage.getBidsForRoom(roomId);
+      const bids = await storage.getBidsForRoom(room.id);
       
       res.json({ 
         room,
-        bids: bids.map((bid, index) => ({
-          ...bid,
-          bidderLabel: `Buyer ${bids.length - index}`
-        })),
+        bids,
         highestBid: bids.length > 0 ? bids[0].amount : 0,
         totalBids: bids.length,
       });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/rooms/:roomId/close", async (req, res) => {
+    try {
+      const { roomId } = req.params;
+      const { token, bidId } = req.body;
+
+      const room = await storage.getRoom(roomId);
+      if (!room || room.ownerToken !== token) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const updatedRoom = await storage.closeAuction(roomId, bidId);
+      res.json({ room: updatedRoom });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

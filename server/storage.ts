@@ -6,15 +6,17 @@ import {
   type InsertBid, 
   type Bid 
 } from "@shared/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { db } from "./db";
 
 export interface IStorage {
   createRoom(room: InsertBiddingRoom): Promise<BiddingRoom>;
   getRoom(id: string): Promise<BiddingRoom | undefined>;
   getRoomByStripeSession(sessionId: string): Promise<BiddingRoom | undefined>;
+  getRoomByOwnerToken(token: string): Promise<BiddingRoom | undefined>;
   updateRoom(id: string, data: Partial<BiddingRoom>): Promise<BiddingRoom | undefined>;
   markRoomPaid(id: string): Promise<BiddingRoom | undefined>;
+  closeAuction(roomId: string, winningBidId: string): Promise<BiddingRoom | undefined>;
   
   createBid(bid: InsertBid): Promise<Bid>;
   getBidsForRoom(roomId: string): Promise<Bid[]>;
@@ -37,6 +39,11 @@ export class DatabaseStorage implements IStorage {
     return room;
   }
 
+  async getRoomByOwnerToken(token: string): Promise<BiddingRoom | undefined> {
+    const [room] = await db.select().from(biddingRooms).where(eq(biddingRooms.ownerToken, token));
+    return room;
+  }
+
   async updateRoom(id: string, data: Partial<BiddingRoom>): Promise<BiddingRoom | undefined> {
     const [updatedRoom] = await db.update(biddingRooms).set(data).where(eq(biddingRooms.id, id)).returning();
     return updatedRoom;
@@ -44,6 +51,15 @@ export class DatabaseStorage implements IStorage {
 
   async markRoomPaid(id: string): Promise<BiddingRoom | undefined> {
     return this.updateRoom(id, { isPaid: true });
+  }
+
+  async closeAuction(roomId: string, winningBidId: string): Promise<BiddingRoom | undefined> {
+    const [updatedRoom] = await db
+      .update(biddingRooms)
+      .set({ winningBidId })
+      .where(eq(biddingRooms.id, roomId))
+      .returning();
+    return updatedRoom;
   }
 
   async createBid(bid: InsertBid): Promise<Bid> {
