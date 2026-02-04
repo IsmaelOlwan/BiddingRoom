@@ -17,7 +17,10 @@ export const biddingRooms = pgTable("bidding_rooms", {
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
-export const insertBiddingRoomSchema = createInsertSchema(biddingRooms).omit({
+export const insertBiddingRoomSchema = createInsertSchema(biddingRooms, {
+  deadline: z.coerce.date(),
+  images: z.array(z.string().url().refine(u => u.startsWith("https://"), "Must be https")).optional().default([]),
+}).omit({
   id: true,
   isPaid: true,
   createdAt: true,
