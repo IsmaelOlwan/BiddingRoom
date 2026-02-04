@@ -1,0 +1,95 @@
+# ✅ Risk 1 (Room aktiveras innan betalning)
+
+### Vad ni har gjort bra
+
+I `GET /api/rooms/:roomId` och `POST /api/rooms/:roomId/bids` blockerar ni allt om `!room.isPaid`:
+
+* `Room not activated` (403) ✅
+  Det betyder: **ingen kan buda/visa rummet utan att `isPaid=true`**.
+
+### Men: ni har fortfarande en “dubbel aktivering”
+
+Ni aktiverar rummet på **två sätt**:
+
+1. **Webhook (tänkt väg)** via `stripeSync.processWebhook(...)`
+2. **Verify-payment endpoint (alternativ väg)** i `GET /api/rooms/:roomId/verify-payment`:
+
+```ts
+if (session.payment_status === "paid") {
+  await storage.markRoomPaid(roomId); // <-- aktiverar här
+  return res.json({ paid: true, ... });
+}
+```
+
+Det här är inte en säkerhetskatastrof (ni checkar session-id + metadata), men det gör att:
+
+* webhook kan faila utan att ni märker det (för det “funkar ändå” när verify körs)
+* ni har två sanningskällor för aktivering (svårare att debugga)
+* ni riskerar edge cases där room blir aktivt trots att webhook aldrig körde (t.ex. om någon “verifierar” långt senare)
+
+## ✅ Min rekommendation (production-correct)
+
+**Låt webhook vara den enda som får skriva `isPaid=true`.**
+Låt `verify-payment` vara **read-only** (polling) och bara säga “paid: true/false”.
+
+### Exakt fix
+
+Ändra `verify-payment` så att den **inte** gör `markRoomPaid`.
+
+```ts
+// /api/rooms/:roomId/verify-payment
+if (session.payment_status === "paid") {
+  // ✅ Read-only: rapportera endast
+  return res.json({ paid: true });
+}
+```
+
+Och flytta mutationen till webhook (se nedan).
+
+## ✅ Säker webhook-aktivering (det ni saknar just nu)
+
+Ni har `WebhookHandlers.handleCheckoutCompleted(sessionId)` men den kallas aldrig.
+
+Lösningen: i webhook-routen, efter att signature verifierats, **parsea eventet** och markera betalt när `checkout.session.completed`.
+
+Exempel (minimal och korrekt):
+
+```ts
+import Stripe from "stripe";
+import { getStripeSecretKey } from "./stripeClient";
+import { WebhookHandlers } from "./webhookHandlers";
+
+app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+  const signature = req.headers["stripe-signature"];
+  if (!signature) return res.status(400).json({ error: "Missing signature" });
+
+  try {
+    const secretKey = await getStripeSecretKey();
+    const stripe = new Stripe(secretKey, { apiVersion: "2025-11-17.clover" });
+
+    // ✅ Verifiera signatur och få event
+    const event = stripe.webhooks.constructEvent(
+      req.body,
+      Array.isArray(signature) ? signature[0] : signature,
+      process.env.STRIPE_WEBHOOK_SECRET! // (eller hur ni hämtar den i Replit)
+    );
+
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      await WebhookHandlers.handleCheckoutCompleted(session.id);
+    }
+
+    res.json({ received: true });
+  } catch (err: any) {
+    console.error("Webhook error:", err.message);
+    res.status(400).json({ error: "Webhook processing error" });
+  }
+});
+```
+
+> Viktigt: ni använder idag `stripe-replit-sync` för managed webhook. Det är OK — men då behöver ni antingen:
+>
+> * få fram webhook-secret korrekt, eller
+> * använda StripeSync:s egna eventmodell/hook (men i er kod just nu triggas inte `handleCheckoutCompleted` alls).
+
+**Bottom line:** Som koden står idag är ni *nästan* rätt, men ni behöver välja *en* aktiveringsväg och jag rekommenderar webhook-only + verify read-only.
