@@ -6,6 +6,7 @@ import { insertBiddingRoomSchema, insertBidSchema } from "@shared/schema";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
+import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 
 const createRoomSchema = z.object({
   title: z.string().min(5),
@@ -25,6 +26,9 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  
+  // Register object storage routes for image uploads
+  registerObjectStorageRoutes(app);
   
   app.get("/api/stripe/publishable-key", async (req, res) => {
     try {

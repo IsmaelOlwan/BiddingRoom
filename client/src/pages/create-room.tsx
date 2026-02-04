@@ -2,10 +2,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Upload, ArrowLeft, Loader2 } from "lucide-react";
+import { CalendarIcon, Upload, ArrowLeft, Loader2, X, ImageIcon } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { useUpload } from "@/hooks/use-upload";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,32 @@ export default function CreateRoomPage() {
   const planType = (params.get("plan") as "basic" | "standard" | "pro") || "basic";
   const plan = PLANS[planType];
   
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  
+  const { uploadFile, isUploading } = useUpload({
+    onSuccess: (response) => {
+      // Store the object path as URL
+      const imageUrl = `${window.location.origin}${response.objectPath}`;
+      setUploadedImages((prev) => [...prev, imageUrl]);
+    },
+  });
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    
+    for (const file of Array.from(files)) {
+      if (file.type.startsWith("image/")) {
+        await uploadFile(file);
+      }
+    }
+    e.target.value = "";
+  };
+
+  const removeImage = (index: number) => {
+    setUploadedImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -74,7 +101,7 @@ export default function CreateRoomPage() {
       const roomRes = await apiRequest("POST", "/api/rooms", {
         title: values.title,
         description: values.description,
-        images: [],
+        images: uploadedImages,
         deadline: values.deadline.toISOString(),
         sellerEmail: values.email,
         planType: planType,
@@ -177,16 +204,60 @@ export default function CreateRoomPage() {
                 />
 
                 <div className="space-y-2">
-                  <Label>Images (Coming Soon)</Label>
-                  <div className="border-2 border-dashed border-border rounded-lg p-12 text-center bg-muted/20 cursor-not-allowed opacity-60">
-                    <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                    <p className="text-sm text-muted-foreground font-medium">
-                      Image upload coming soon
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      PNG, JPG up to 10MB each
-                    </p>
-                  </div>
+                  <Label>Images (optional)</Label>
+                  
+                  {uploadedImages.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 mb-4">
+                      {uploadedImages.map((url, index) => (
+                        <div key={index} className="relative aspect-square rounded-lg overflow-hidden border border-border">
+                          <img src={url} alt={`Upload ${index + 1}`} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/80"
+                            data-testid={`button-remove-image-${index}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  <label className="block">
+                    <div className={cn(
+                      "border-2 border-dashed border-border rounded-lg p-8 text-center bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors",
+                      isUploading && "opacity-60 pointer-events-none"
+                    )}>
+                      {isUploading ? (
+                        <>
+                          <Loader2 className="mx-auto h-12 w-12 text-muted-foreground mb-4 animate-spin" />
+                          <p className="text-sm text-muted-foreground font-medium">
+                            Uploading...
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                          <p className="text-sm text-muted-foreground font-medium">
+                            Click to upload images
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            PNG, JPG up to 10MB each
+                          </p>
+                        </>
+                      )}
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={handleFileSelect}
+                      disabled={isUploading}
+                      data-testid="input-images"
+                    />
+                  </label>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-6">

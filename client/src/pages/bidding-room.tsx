@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "wouter";
 import { format, differenceInSeconds } from "date-fns";
-import { Clock, ShieldCheck, Mail, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { Clock, ShieldCheck, Mail, AlertCircle, CheckCircle2, Loader2, ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -47,6 +47,7 @@ export default function BiddingRoomPage() {
   const [timeLeft, setTimeLeft] = useState<string>("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEnded, setIsEnded] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   const { data, isLoading, error } = useQuery<RoomData>({
     queryKey: ["room", id],
@@ -192,15 +193,57 @@ export default function BiddingRoomPage() {
             </div>
 
             {room.images && room.images.length > 0 ? (
-              <div className="aspect-video bg-secondary/20 rounded-xl overflow-hidden border border-border">
-                <img 
-                  src={room.images[0]} 
-                  alt={room.title}
-                  className="w-full h-full object-cover"
-                />
+              <div className="space-y-3">
+                <div className="relative aspect-video bg-secondary/20 rounded-xl overflow-hidden border border-border">
+                  <img 
+                    src={room.images[selectedImageIndex]} 
+                    alt={`${room.title} - Image ${selectedImageIndex + 1}`}
+                    className="w-full h-full object-cover"
+                    data-testid="image-main"
+                  />
+                  {room.images.length > 1 && (
+                    <>
+                      <button
+                        onClick={() => setSelectedImageIndex(i => (i > 0 ? i - 1 : room.images.length - 1))}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background rounded-full p-2"
+                        data-testid="button-prev-image"
+                      >
+                        <ChevronLeft className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={() => setSelectedImageIndex(i => (i < room.images.length - 1 ? i + 1 : 0))}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background rounded-full p-2"
+                        data-testid="button-next-image"
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </button>
+                      <div className="absolute bottom-2 right-2 bg-background/80 rounded-full px-2 py-1 text-xs">
+                        {selectedImageIndex + 1} / {room.images.length}
+                      </div>
+                    </>
+                  )}
+                </div>
+                
+                {room.images.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {room.images.map((url, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setSelectedImageIndex(i)}
+                        className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${
+                          i === selectedImageIndex ? "border-primary" : "border-border hover:border-primary/50"
+                        }`}
+                        data-testid={`button-thumbnail-${i}`}
+                      >
+                        <img src={url} alt={`Thumbnail ${i + 1}`} className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="aspect-video bg-secondary/20 rounded-xl border border-border flex items-center justify-center">
+              <div className="aspect-video bg-secondary/20 rounded-xl border border-border flex flex-col items-center justify-center">
+                <ImageIcon className="h-12 w-12 text-muted-foreground/50 mb-2" />
                 <p className="text-muted-foreground">No images available</p>
               </div>
             )}
