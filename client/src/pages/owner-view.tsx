@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { 
   CheckCircle2, 
   Clock, 
@@ -132,6 +133,11 @@ export default function OwnerViewPage() {
   const { room, bids, highestBid, totalBids } = data;
   const isClosed = !!room.winningBidId;
   const winningBid = bids.find(b => b.id === room.winningBidId);
+  const userTimezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
+  const formattedDeadline = useMemo(() => {
+    if (!room.deadline) return "";
+    return formatInTimeZone(new Date(room.deadline), userTimezone, "PPP 'at' h:mm a zzz");
+  }, [room.deadline, userTimezone]);
 
   return (
     <div className="min-h-screen bg-background font-sans">
@@ -272,7 +278,7 @@ export default function OwnerViewPage() {
               <CardContent className="pt-6 space-y-4">
                 <div className="space-y-1">
                   <div className="text-[10px] uppercase font-bold text-muted-foreground">Deadline</div>
-                  <div className="font-medium">{format(new Date(room.deadline), "PPP")}</div>
+                  <div className="font-medium">{formattedDeadline}</div>
                 </div>
                 <div className="space-y-1">
                   <div className="text-[10px] uppercase font-bold text-muted-foreground">Seller Email</div>

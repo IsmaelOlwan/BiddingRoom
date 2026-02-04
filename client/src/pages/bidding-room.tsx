@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "wouter";
 import { format, differenceInSeconds } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { Clock, ShieldCheck, Mail, AlertCircle, CheckCircle2, Loader2, ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -161,19 +162,29 @@ export default function BiddingRoomPage() {
   }
 
   const { room, bids, highestBid, totalBids } = data;
+  const userTimezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
+  const formattedDeadline = useMemo(() => {
+    if (!room.deadline) return "";
+    return formatInTimeZone(new Date(room.deadline), userTimezone, "PPP 'at' h:mm a zzz");
+  }, [room.deadline, userTimezone]);
 
   return (
     <div className="min-h-screen bg-background font-sans">
       <header className="border-b border-border/50 sticky top-0 bg-background/95 backdrop-blur z-10">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="font-display font-bold text-lg">Bidding Room</div>
-          <div className={`flex items-center gap-2 font-mono text-sm font-bold px-3 py-1 rounded-full ${
-            isEnded 
-              ? "text-muted-foreground bg-muted" 
-              : "text-destructive bg-destructive/10"
-          }`}>
-            <Clock className="h-4 w-4" />
-            {timeLeft || "Loading..."}
+          <div className="flex flex-col items-end">
+            <div className={`flex items-center gap-2 font-mono text-sm font-bold px-3 py-1 rounded-full ${
+              isEnded 
+                ? "text-muted-foreground bg-muted" 
+                : "text-destructive bg-destructive/10"
+            }`}>
+              <Clock className="h-4 w-4" />
+              {timeLeft || "Loading..."}
+            </div>
+            <div className="text-[10px] text-muted-foreground mt-1">
+              Ends: {formattedDeadline}
+            </div>
           </div>
         </div>
       </header>

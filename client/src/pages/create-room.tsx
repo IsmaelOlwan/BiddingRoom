@@ -2,9 +2,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Upload, ArrowLeft, Loader2, X, ImageIcon } from "lucide-react";
+import { formatInTimeZone } from "date-fns-tz";
+import { CalendarIcon, Upload, ArrowLeft, Loader2, X, ImageIcon, Clock } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useUpload } from "@/hooks/use-upload";
 
@@ -45,9 +46,11 @@ const formSchema = z.object({
   description: z.string().min(20, {
     message: "Description must be at least 20 characters.",
   }),
-  deadline: z.date({
-    required_error: "A deadline is required.",
+  deadlineDate: z.date({
+    required_error: "A deadline date is required.",
   }),
+  deadlineHour: z.string().default("23"),
+  deadlineMinute: z.string().default("59"),
   email: z.string().email({
     message: "Please enter a valid email address.",
   }),
@@ -85,22 +88,29 @@ export default function CreateRoomPage() {
     setUploadedImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const userTimezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
       description: "",
       email: "",
+      deadlineHour: "23",
+      deadlineMinute: "59",
     },
   });
 
   const createRoomMutation = useMutation({
     mutationFn: async (values: z.infer<typeof formSchema>) => {
+      const deadline = new Date(values.deadlineDate);
+      deadline.setHours(parseInt(values.deadlineHour), parseInt(values.deadlineMinute), 0, 0);
+      
       const roomRes = await apiRequest("POST", "/api/rooms", {
         title: values.title,
         description: values.description,
         images: uploadedImages,
-        deadline: values.deadline.toISOString(),
+        deadline: deadline.toISOString(),
         sellerEmail: values.email,
         planType: planType,
       });
@@ -258,10 +268,10 @@ export default function CreateRoomPage() {
                   </label>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-4">
                   <FormField
                     control={form.control}
-                    name="deadline"
+                    name="deadlineDate"
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
                         <FormLabel>Bidding Deadline</FormLabel>
@@ -297,13 +307,65 @@ export default function CreateRoomPage() {
                             />
                           </PopoverContent>
                         </Popover>
-                        <FormDescription>
-                          Bidding closes at midnight on this date.
-                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="deadlineHour"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <Clock className="h-4 w-4" /> Time
+                          </FormLabel>
+                          <FormControl>
+                            <select
+                              {...field}
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                              data-testid="select-deadline-hour"
+                            >
+                              {Array.from({ length: 24 }, (_, i) => (
+                                <option key={i} value={i.toString().padStart(2, "0")}>
+                                  {i.toString().padStart(2, "0")}:00
+                                </option>
+                              ))}
+                            </select>
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="deadlineMinute"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>&nbsp;</FormLabel>
+                          <FormControl>
+                            <select
+                              {...field}
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                              data-testid="select-deadline-minute"
+                            >
+                              {["00", "15", "30", "45", "59"].map((m) => (
+                                <option key={m} value={m}>
+                                  :{m}
+                                </option>
+                              ))}
+                            </select>
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <FormDescription className="text-xs">
+                    Your timezone: <span className="font-medium">{userTimezone}</span>
+                  </FormDescription>
+                </div>
+
+                <div className="grid md:grid-cols-1 gap-6">
 
                   <FormField
                     control={form.control}
