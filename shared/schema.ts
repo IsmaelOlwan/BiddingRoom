@@ -27,15 +27,33 @@ export const biddingRooms = pgTable("bidding_rooms", {
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
+const imagePathSchema = z.string().refine(
+  (path) => path.startsWith("/objects/") || path.startsWith("https://"),
+  "Images must be object storage paths (/objects/...) or HTTPS URLs"
+);
+
 export const insertBiddingRoomSchema = createInsertSchema(biddingRooms, {
+  title: z.string().min(5, "Title must be at least 5 characters"),
+  description: z.string().min(20, "Description must be at least 20 characters"),
   deadline: z.coerce.date(),
-  images: z.array(z.string().url().refine(u => u.startsWith("https://"), "Must be https")).optional().default([]),
+  sellerEmail: z.string().email("Must be a valid email"),
+  images: z.array(imagePathSchema).optional().default([]),
 }).omit({
   id: true,
   isPaid: true,
   ownerToken: true,
   winningBidId: true,
   createdAt: true,
+});
+
+export const createRoomApiSchema = insertBiddingRoomSchema.extend({
+  deadline: z.string().transform((str) => new Date(str)),
+  planType: z.enum(["basic", "standard", "pro"]),
+});
+
+export const placeBidApiSchema = z.object({
+  amount: z.number().positive("Bid amount must be positive"),
+  bidderEmail: z.string().email("Must be a valid email"),
 });
 
 export type InsertBiddingRoom = z.infer<typeof insertBiddingRoomSchema>;

@@ -2,32 +2,17 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
-import { insertBiddingRoomSchema, insertBidSchema } from "@shared/schema";
+import { createRoomApiSchema, placeBidApiSchema } from "@shared/schema";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
-
-const createRoomSchema = z.object({
-  title: z.string().min(5),
-  description: z.string().min(20),
-  images: z.array(z.string()).optional().default([]),
-  deadline: z.string().transform((str) => new Date(str)),
-  sellerEmail: z.string().email(),
-  planType: z.enum(["basic", "standard", "pro"]),
-});
-
-const placeBidSchema = z.object({
-  amount: z.number().positive(),
-  bidderEmail: z.string().email(),
-});
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   
-  // Register object storage routes for image uploads
   registerObjectStorageRoutes(app);
   
   app.get("/api/stripe/publishable-key", async (req, res) => {
@@ -63,7 +48,7 @@ export async function registerRoutes(
 
   app.post("/api/rooms", async (req, res) => {
     try {
-      const data = createRoomSchema.parse(req.body);
+      const data = createRoomApiSchema.parse(req.body);
       
       const room = await storage.createRoom({
         title: data.title,
@@ -100,7 +85,6 @@ export async function registerRoutes(
 
       const stripe = await getUncachableStripeClient();
       
-      // Query Stripe API directly for products with matching planType
       const products = await stripe.products.search({
         query: `metadata['planType']:'${room.planType}' AND active:'true'`,
       });
@@ -111,7 +95,6 @@ export async function registerRoutes(
 
       const productId = products.data[0].id;
       
-      // Get active price for this product
       const prices = await stripe.prices.list({
         product: productId,
         active: true,
@@ -150,8 +133,6 @@ export async function registerRoutes(
     }
   });
 
-  // Verify payment status - ONLY checks status, does NOT activate rooms
-  // Room activation happens ONLY via Stripe webhook (checkout.session.completed)
   app.get("/api/rooms/:roomId/verify-payment", async (req, res) => {
     try {
       const { roomId } = req.params;
@@ -162,7 +143,6 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Room not found" });
       }
 
-      // If already paid (activated by webhook), return success
       if (room.isPaid) {
         return res.json({ 
           paid: true, 
@@ -175,15 +155,12 @@ export async function registerRoutes(
         });
       }
 
-      // Validate session belongs to this room
       if (session_id && typeof session_id === "string") {
         if (room.stripeSessionId !== session_id) {
           return res.status(400).json({ error: "Invalid session for this room" });
         }
       }
 
-      // Room not yet activated by webhook - return pending status
-      // Client should poll this endpoint until webhook activates the room
       res.json({ 
         paid: false, 
         pending: true,
@@ -254,19 +231,11 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Room not activated" });
       }
 
-      if (new Date() > new Date(room.deadline)) {
+      if (new Date() >= new Date(room.deadline)) {
         return res.status(400).json({ error: "Bidding has ended" });
       }
 
-      // Final safety check: deadline must be at least 1 hour in the future when bidding
-      // to account for clock drift or last-second submissions
-      const now = new Date();
-      const deadlineDate = new Date(room.deadline);
-      if (now >= deadlineDate) {
-        return res.status(400).json({ error: "Bidding has ended (server-side check)" });
-      }
-
-      const data = placeBidSchema.parse(req.body);
+      const data = placeBidApiSchema.parse(req.body);
       
       const highestBid = await storage.getHighestBid(roomId);
       if (highestBid && data.amount <= highestBid.amount) {
@@ -303,7 +272,17 @@ export async function registerRoutes(
       const bids = await storage.getBidsForRoom(room.id);
       
       res.json({ 
-        room,
+        room: {
+          id: room.id,
+          title: room.title,
+          description: room.description,
+          images: room.images,
+          deadline: room.deadline,
+          sellerEmail: room.sellerEmail,
+          planType: room.planType,
+          isPaid: room.isPaid,
+          winningBidId: room.winningBidId,
+        },
         bids,
         highestBid: bids.length > 0 ? bids[0].amount : 0,
         totalBids: bids.length,

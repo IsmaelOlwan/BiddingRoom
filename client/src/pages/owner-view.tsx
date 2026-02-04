@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, useLocation } from "wouter";
+import { useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { 
@@ -8,7 +8,6 @@ import {
   Users, 
   Trophy, 
   Mail, 
-  ExternalLink, 
   Loader2, 
   AlertCircle,
   ShieldCheck,

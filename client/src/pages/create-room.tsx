@@ -65,9 +65,7 @@ export default function CreateRoomPage() {
   
   const { uploadFile, isUploading } = useUpload({
     onSuccess: (response) => {
-      // Store the object path as URL
-      const imageUrl = `${window.location.origin}${response.objectPath}`;
-      setUploadedImages((prev) => [...prev, imageUrl]);
+      setUploadedImages((prev) => [...prev, response.objectPath]);
     },
   });
 
